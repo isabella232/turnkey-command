@@ -22,7 +22,7 @@ import popen4
 from fifobuffer import FIFOBuffer
 from fileevent import *
 
-from subprocess import mkarg
+from shlex import quote
 from io import StringIO
 
 def fmt_argv(argv):
@@ -33,11 +33,11 @@ def fmt_argv(argv):
 
     for i, arg in enumerate(args):
         if re.search(r"[\s'\"]", arg):
-            args[i] = mkarg(arg)
+            args[i] = shlex(arg)
         else:
             args[i] = " " + arg
 
-    return argv[0] + "".join(args)
+    return argv[0] + " " + " ".join(args)
 
 def get_blocking(fd):
     import fcntl
