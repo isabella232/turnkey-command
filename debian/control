@@ -15,6 +15,7 @@ Architecture: any
 Depends:
  ${misc:Depends},
  ${python3:Depends},
+ turnkey-popen4
 Suggests:
  python3-profiler,
 Description: TurnKey GNU/Linux Highlevel Command Execution Library
