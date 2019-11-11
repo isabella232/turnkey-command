@@ -1,8 +1,7 @@
 # Copyright (c) 2007-2011 Liraz Siri <liraz@turnkeylinux.org>
-# 
-# This file is part of turnkey-pylib.
-# 
-# turnkey-pylib is open source software; you can redistribute it and/or
+#               2019 TurnKey GNU/Linux <admin@turnkeylinux.org>
+#
+# turnkey-command is open source software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 3 of the
 # License, or (at your option) any later version.
@@ -25,6 +24,7 @@ from fileevent import *
 from shlex import quote
 from io import StringIO
 
+
 def fmt_argv(argv):
     if not argv:
         return ""
@@ -39,6 +39,7 @@ def fmt_argv(argv):
 
     return argv[0] + " " + " ".join(args)
 
+
 def get_blocking(fd):
     import fcntl
     flags = fcntl.fcntl(fd, fcntl.F_GETFL, 0)
@@ -46,6 +47,7 @@ def get_blocking(fd):
         return False
     else:
         return True
+
 
 def set_blocking(fd, blocking):
     import fcntl
@@ -58,6 +60,7 @@ def set_blocking(fd, blocking):
     else:
         fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
 
+
 class FileEnhancedRead:
     def __init__(self, fh):
         self.fh = fh
@@ -66,10 +69,11 @@ class FileEnhancedRead:
         return getattr(self.fh, attr)
 
     def read(self, size=-1, timeout=None):
-        """A better read where you can (optionally) configure how long to wait for data.
+        """A better read where you can (optionally) configure how long to wait
+        for data.
 
         Arguments:
-            
+
         'timeout': how many seconds to wait before for output.
 
                 If no output return None.
@@ -81,7 +85,7 @@ class FileEnhancedRead:
 
         if timeout < 0:
             timeout = 0
-        
+
         fd = self.fh.fileno()
         output = None
 
@@ -117,6 +121,7 @@ class FileEnhancedRead:
         if mask & select.POLLHUP:
             return ''
 
+
 class Command(object):
     """Convenience module for executing a command
 
@@ -147,7 +152,7 @@ class Command(object):
         # command.outputsearch() command.output will be None until the
         # command finishes.
 
-        while c.output is None: 
+        while c.output is None:
             time.sleep(1)
 
         print "output = '%s', exitcode = %d" % (c.output, c.exitcode)
@@ -187,7 +192,7 @@ class Command(object):
         'runas' user we run as (set user, set groups, etc.)
         'setpgrp' do we setpgrp in child? (create its own process group)
         """
-        
+
         self.ppid = os.getpid()
 
         self._child = None
@@ -200,11 +205,10 @@ class Command(object):
         self._setpgrp = setpgrp
         self._debug = debug
         self._cmd = cmd
-        
+
         self._output = FIFOBuffer()
-        self._dprint("# command started (pid=%d, pty=%s): %s" % (self._child.pid,
-                                                               repr(pty),
-                                                               cmd))
+        self._dprint(("# command started (pid=%d, pty=%s): %s"
+                      ) % (self._child.pid, repr(pty), cmd))
 
     def __del__(self):
         if not self._child:
@@ -213,13 +217,14 @@ class Command(object):
         # don't terminate() a process we didn't start
         if os.getpid() == self.ppid:
             self.terminate()
-        
+
     def _dprint(self, msg):
         if self._debug:
             print(msg, file=sys.stderr)
-        
+
     def terminate(self, gracetime=0, sig=signal.SIGTERM):
-        """terminate command. kills command with 'sig', then sleeps for 'gracetime', before sending SIGKILL
+        """terminate command. kills command with 'sig', then sleeps for
+        'gracetime', before sending SIGKILL
         """
 
         if self.running:
@@ -241,7 +246,7 @@ class Command(object):
                     raise
 
                 return
-            
+
             for i in range(gracetime):
                 if not self.running:
                     return
@@ -260,7 +265,7 @@ class Command(object):
 
         if not os.WIFSIGNALED(status):
             return None
-        
+
         return os.WTERMSIG(status)
     terminated = property(terminated)
 
@@ -285,21 +290,23 @@ class Command(object):
 
     def wait(self, timeout=None, poll_interval=0.2, callback=None):
         """wait for process to finish executing.
-        'timeout' is how long we wait in seconds (None is forever)
-        'poll_interval' is how long we sleep between checks to see if process has finished
-        'callback': you can use callback to check for other conditions (e.g., besides timeout) and stop wait early.
+        'timeout': how long we wait in seconds (None is forever)
+        'poll_interval': how long we sleep between checks to see if process has
+                         finished
+        'callback': you can use callback to check for other conditions (e.g.,
+                    besides timeout) and stop wait early.
 
         return value: did the process finish? True/False
 
         """
         if not self.running:
             return True
-        
+
         if timeout is None:
             self._child.wait()
             return True
         else:
-            start=time.time()
+            start = time.time()
             while time.time() - start < timeout:
                 if callback and callback() is False:
                     return False
@@ -313,12 +320,12 @@ class Command(object):
     def output(self):
         if len(self._output):
             return self._output.getvalue()
-        
+
         if self.running:
             return None
 
         # this will read into self._output via _ChildObserver
-        self.fromchild.read() 
+        self.fromchild.read()
 
         return self._output.getvalue()
 
@@ -342,16 +349,18 @@ class Command(object):
         return self._fromchild
 
     fromchild = property(fromchild)
-        
+
     def outputsearch(self, p, timeout=None, linemode=False):
-        """Search for 'p' in the command's output, while listening for more output from command, within 'timeout'
+        """Search for 'p' in the command's output, while listening for more
+        output from command, within 'timeout'
 
         'p' can be a list of re patterns or a single re pattern
            the value of a pattern can be an re string, or a compiled re object
         If 'timeout' is None, wait forever [*]
 
-	'linemode' determines whether we search output line by line (as it comes), or all of the output in aggregate
-        
+        'linemode' determines whether we search output line by line (as it
+        comes), or all of the output in aggregate
+
         Return value:
         Did we match the output?
             Return a tuple (the pattern we matched, the string match)
@@ -363,15 +372,15 @@ class Command(object):
 
         - Output is collected and can be accessed by the output attribute [*]
         """
-        
+
         patterns = []
         if not type(p) in (tuple, list):
             patterns.append(p)
         else:
             patterns += p
 
-        # compile all patterns into re objects, but keep the original pattern object
-        # so we can return it to the user when we match (friendlier interface)
+        # compile all patterns into re objects, but keep the original pattern
+        # object so we can return it to user when matched (friendy interface)
         re_type = type(re.compile(""))
         for i in range(len(patterns)):
             if type(patterns[i]) is not re_type:
@@ -385,7 +394,7 @@ class Command(object):
                     line = self._output.readline(True)
                     if not line:
                         return None
-                    
+
                     for pattern_re, pattern_orig in patterns:
                         match = pattern_re.search(line)
                         if match:
@@ -393,14 +402,14 @@ class Command(object):
 
                     if not line.endswith('\n'):
                         return None
-                        
+
             else:
                 # match against the entire buffered output
                 for pattern_re, pattern_orig in patterns:
                     match = pattern_re.search(self._output.getvalue())
                     if match:
                         return pattern_orig, match
-            
+
         # maybe we already match? (in buffered output)
         m = check_match()
         if m:
@@ -433,11 +442,11 @@ class Command(object):
         """Read output from child.
 
         Args:
-        'callback': callback(command, readbuf) every read loop or 
+        'callback': callback(command, readbuf) every read loop or
                     callback_interval (whichever comes sooner).
 
                     readbuf may be:
-                     
+
                     1) a string
                     2) None (no input during callback_interval)
                     2) an empty string (EOF)
@@ -469,7 +478,7 @@ class Command(object):
                 self.wait()
                 break
 
-        if output != '': # no leftovers if EOF
+        if output != '':  # no leftovers if EOF
             leftovers = self.fromchild.read()
             sio.write(leftovers)
             callback(self, leftovers)
@@ -485,10 +494,11 @@ class Command(object):
 
         return fmt_argv(self._cmd)
 
+
 class CommandTrue:
     """
     Simplified interface to Command class.
-    
+
     A command istrue() if its exitcode == 0
     """
     def __init__(self, cmd):
@@ -510,8 +520,10 @@ class CommandTrue:
         else:
             return True
 
+
 last_exitcode = None
 last_output = None
+
 
 def eval(cmd, setpgrp=False):
     """convenience function
@@ -521,12 +533,13 @@ def eval(cmd, setpgrp=False):
     """
     global last_output
     global last_exitcode
-    
+
     c = Command(cmd, setpgrp=setpgrp)
     c.wait()
     last_output = c.output
     last_exitcode = c.exitcode
     return last_exitcode == 0
+
 
 def output(cmd):
     """convenience function
